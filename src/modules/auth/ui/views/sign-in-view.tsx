@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import {FaGithub, FaGoogle} from 'react-icons/fa';
+import { FaGithub, FaGoogle } from 'react-icons/fa';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { OctagonAlertIcon } from 'lucide-react';
-
 
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
@@ -51,12 +50,12 @@ export const SignInView = () => {
       {
         email: data.email,
         password: data.password,
-        callbackURL: "/",
+        callbackURL: '/',
       },
       {
         onSuccess: () => {
           setPending(false);
-          router.push("/");
+          router.push('/');
         },
         onError: ({ error }) => {
           setError(error.message);
@@ -65,14 +64,14 @@ export const SignInView = () => {
     );
   };
 
-  const onSocial = (provider: "github" | "google") => {
+  const onSocial = (provider: 'github' | 'google') => {
     setError(null);
     setPending(true);
 
     authClient.signIn.social(
       {
         provider: provider,
-        callbackURL: "/",
+        callbackURL: '/',
       },
       {
         onSuccess: () => {
@@ -153,7 +152,7 @@ export const SignInView = () => {
                 <div className='grid grid-cols-2 gap-4'>
                   <Button
                     disabled={pending}
-                    onClick={() => onSocial("google")}
+                    onClick={() => onSocial('google')}
                     variant='outline'
                     type='button'
                     className='w-full'
@@ -162,7 +161,7 @@ export const SignInView = () => {
                   </Button>
                   <Button
                     disabled={pending}
-                    onClick={() => onSocial("github")}
+                    onClick={() => onSocial('github')}
                     variant='outline'
                     type='button'
                     className='w-full'
@@ -182,7 +181,7 @@ export const SignInView = () => {
               </div>
             </form>
           </Form>
-          <div className='bg-radial from-green-700 to-green-900 relative hidden md:flex flex-col gap-y-4 items-center justify-center'>
+          <div className='bg-radial from-sidebar-accent to-sidebar relative hidden md:flex flex-col gap-y-4 items-center justify-center'>
             <img src='/logo.svg' alt='Image' className='h-[92px] w-[92px]' />
             <p className='text-2xl font-semibold text-white'>Meet.AI</p>
           </div>

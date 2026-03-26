@@ -5,10 +5,9 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import {FaGithub, FaGoogle} from 'react-icons/fa';
+import { FaGithub, FaGoogle } from 'react-icons/fa';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { OctagonAlertIcon } from 'lucide-react';
-
 
 import { Input } from '@/components/ui/input';
 import { authClient } from '@/lib/auth-client';
@@ -62,12 +61,12 @@ export const SignUpView = () => {
         name: data.name,
         email: data.email,
         password: data.password,
-        callbackURL: "/",
+        callbackURL: '/',
       },
       {
         onSuccess: () => {
           setPending(false);
-          router.push("/sign-in");
+          router.push('/sign-in');
         },
         onError: ({ error }) => {
           setError(error.message);
@@ -76,14 +75,14 @@ export const SignUpView = () => {
     );
   };
 
-  const onSocial = (provider: "github" | "google") => {
+  const onSocial = (provider: 'github' | 'google') => {
     setError(null);
     setPending(true);
 
     authClient.signIn.social(
       {
         provider: provider,
-        callbackURL: "/",
+        callbackURL: '/',
       },
       {
         onSuccess: () => {
@@ -195,7 +194,7 @@ export const SignUpView = () => {
                   </Alert>
                 )}
                 <Button disabled={pending} type='submit' className='w-full'>
-                  Sign In
+                  Sign Up
                 </Button>
                 <div className='after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t'>
                   <span className='bg-card text-muted-foreground relative z-10 px-2'>
@@ -205,7 +204,7 @@ export const SignUpView = () => {
                 <div className='grid grid-cols-2 gap-4'>
                   <Button
                     disabled={pending}
-                    onClick={() => onSocial("google")}
+                    onClick={() => onSocial('google')}
                     variant='outline'
                     type='button'
                     className='w-full'
@@ -214,7 +213,7 @@ export const SignUpView = () => {
                   </Button>
                   <Button
                     disabled={pending}
-                    onClick={() => onSocial("github")}
+                    onClick={() => onSocial('github')}
                     variant='outline'
                     type='button'
                     className='w-full'
@@ -234,7 +233,7 @@ export const SignUpView = () => {
               </div>
             </form>
           </Form>
-          <div className='bg-radial from-green-700 to-green-900 relative hidden md:flex flex-col gap-y-4 items-center justify-center'>
+          <div className='bg-radial from-sidebar-accent to-sidebar relative hidden md:flex flex-col gap-y-4 items-center justify-center'>
             <img src='/logo.svg' alt='Image' className='h-[92px] w-[92px]' />
             <p className='text-2xl font-semibold text-white'>Meet.AI</p>
           </div>
