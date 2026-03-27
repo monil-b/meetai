@@ -1,3 +1,4 @@
+import {nanoid} from "nanoid";
 import { Schema, model, models } from "mongoose";
 
 const userSchema = new Schema(
@@ -58,5 +59,16 @@ const verificationSchema = new Schema(
   { timestamps: true }
 );
 
-export const Verification =
-  models.Verification || model("Verification", verificationSchema, "verification");
+export const Verification = models.Verification || model("Verification", verificationSchema, "verification");
+
+const agentSchema = new Schema(
+  {
+    id: { type: String, default: () => nanoid() },
+    name: { type: String, required: true },
+    userId: { type: String, required: true, index: true }, 
+    instructions: { type: String, required: true },
+  },
+  { timestamps: true }
+);
+
+export const Agent = models.Agent || model("Agent", agentSchema, "agents");
