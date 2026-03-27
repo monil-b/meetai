@@ -1,73 +1,62 @@
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { Schema, model, models } from "mongoose";
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
-  image: text("image"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-});
-
-export const session = pgTable(
-  "session",
+const userSchema = new Schema(
   {
-    id: text("id").primaryKey(),
-    expiresAt: timestamp("expires_at").notNull(),
-    token: text("token").notNull().unique(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
-    ipAddress: text("ip_address"),
-    userAgent: text("user_agent"),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    id: { type: String, required: true }, 
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true, index: true },
+    emailVerified: { type: Boolean, default: false },
+    image: { type: String },
   },
-  (table) => [index("session_userId_idx").on(table.userId)],
+  { timestamps: true }
 );
 
-export const account = pgTable(
-  "account",
+export const User = models.User || model("User", userSchema, "user");
+
+const sessionSchema = new Schema(
   {
-    id: text("id").primaryKey(),
-    accountId: text("account_id").notNull(),
-    providerId: text("provider_id").notNull(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    accessToken: text("access_token"),
-    refreshToken: text("refresh_token"),
-    idToken: text("id_token"),
-    accessTokenExpiresAt: timestamp("access_token_expires_at"),
-    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
-    scope: text("scope"),
-    password: text("password"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    id: { type: String, required: true },
+    expiresAt: { type: Date, required: true },
+    token: { type: String, required: true, unique: true },
+    ipAddress: { type: String },
+    userAgent: { type: String },
+    userId: { type: String, required: true, index: true }, 
   },
-  (table) => [index("account_userId_idx").on(table.userId)],
+  { timestamps: true }
 );
 
-export const verification = pgTable(
-  "verification",
+export const Session =
+  models.Session || model("Session", sessionSchema, "session");
+
+const accountSchema = new Schema(
   {
-    id: text("id").primaryKey(),
-    identifier: text("identifier").notNull(),
-    value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
+    id: { type: String, required: true },
+    accountId: { type: String, required: true },
+    providerId: { type: String, required: true },
+    userId: { type: String, required: true, index: true },
+    accessToken: { type: String },
+    refreshToken: { type: String },
+    idToken: { type: String },
+    accessTokenExpiresAt: { type: Date },
+    refreshTokenExpiresAt: { type: Date },
+    scope: { type: String },
+    password: { type: String },
   },
-  (table) => [index("verification_identifier_idx").on(table.identifier)],
+  { timestamps: true }
 );
+
+export const Account =
+  models.Account || model("Account", accountSchema, "account");
+
+const verificationSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    identifier: { type: String, required: true, index: true },
+    value: { type: String, required: true },
+    expiresAt: { type: Date, required: true },
+  },
+  { timestamps: true }
+);
+
+export const Verification =
+  models.Verification || model("Verification", verificationSchema, "verification");
