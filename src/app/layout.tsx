@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+
+import { TRPCReactProvider } from "@/trpc/client";
+
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -18,15 +21,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${inter.className} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
-        <TooltipProvider>
-          {children}
-        </TooltipProvider>
-      </body>
-    </html>
+    <TRPCReactProvider>
+      <html lang="en" className={`${inter.className} h-full antialiased`}>
+        <body className="min-h-full flex flex-col bg-background text-foreground">
+          <TooltipProvider>{children}</TooltipProvider>
+        </body>
+      </html>
+    </TRPCReactProvider>
   );
 }
