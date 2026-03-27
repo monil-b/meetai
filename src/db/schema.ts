@@ -2,6 +2,7 @@ import { Schema, model, models } from "mongoose";
 
 const userSchema = new Schema(
   {
+    id: { type: String, required: true }, 
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
     emailVerified: { type: Boolean, default: false },
@@ -10,37 +11,29 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-export const User = models.User || model("User", userSchema, "users");
+export const User = models.User || model("User", userSchema, "user");
 
 const sessionSchema = new Schema(
   {
+    id: { type: String, required: true },
     expiresAt: { type: Date, required: true },
     token: { type: String, required: true, unique: true },
     ipAddress: { type: String },
     userAgent: { type: String },
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
+    userId: { type: String, required: true, index: true }, 
   },
   { timestamps: true }
 );
 
 export const Session =
-  models.Session || model("Session", sessionSchema, "sessions");
+  models.Session || model("Session", sessionSchema, "session");
 
 const accountSchema = new Schema(
   {
+    id: { type: String, required: true },
     accountId: { type: String, required: true },
     providerId: { type: String, required: true },
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-      index: true,
-    },
+    userId: { type: String, required: true, index: true },
     accessToken: { type: String },
     refreshToken: { type: String },
     idToken: { type: String },
@@ -53,10 +46,11 @@ const accountSchema = new Schema(
 );
 
 export const Account =
-  models.Account || model("Account", accountSchema, "accounts");
+  models.Account || model("Account", accountSchema, "account");
 
 const verificationSchema = new Schema(
   {
+    id: { type: String, required: true },
     identifier: { type: String, required: true, index: true },
     value: { type: String, required: true },
     expiresAt: { type: Date, required: true },
@@ -64,4 +58,5 @@ const verificationSchema = new Schema(
   { timestamps: true }
 );
 
-export const Verification = models.Verification || model("Verification", verificationSchema, "verifications");
+export const Verification =
+  models.Verification || model("Verification", verificationSchema, "verification");
