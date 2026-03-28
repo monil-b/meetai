@@ -20,7 +20,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { GeneratedAvatar } from "@/components/ui/generated-avatar";
+import { GeneratedAvatar } from "@/components/generated-avatar";
 import { da } from "date-fns/locale";
 import { Chevron } from "react-day-picker";
 import { ChevronDownIcon, CreditCardIcon, LogOutIcon } from "lucide-react";
