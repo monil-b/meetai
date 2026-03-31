@@ -1,10 +1,16 @@
-import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
-import { agentsInsertSchema } from "../schemas";
 import { z } from "zod";
+import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { connectDB } from "@/db";
 import { Agent } from "@/db/schema";
+import {
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  MIN_PAGE_SIZE,
+} from "@/constants";
+import { agentsInsertSchema } from "../schemas";
 
-export const agentRouter = createTRPCRouter({
+export const agentsRouter = createTRPCRouter({
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -14,19 +20,59 @@ export const agentRouter = createTRPCRouter({
         id: input.id,
         userId: ctx.auth.user.id,
       });
-      
-      return agent;
+
+      if (!agent) return null;
+
+      return {
+        meetingCount: 5, // TODO: replace with real count later
+        ...agent.toObject(),
+      };
     }),
 
-  getMany: protectedProcedure.query(async ({ ctx }) => {
-    await connectDB();
+  getMany: protectedProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(DEFAULT_PAGE),
+        pageSize: z
+          .number()
+          .int()
+          .min(MIN_PAGE_SIZE)
+          .max(MAX_PAGE_SIZE)
+          .default(DEFAULT_PAGE_SIZE),
+        search: z.string().nullish(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      await connectDB();
 
-    const agents = await Agent.find({
-      userId: ctx.auth.user.id,
-    });
+      const { search, page, pageSize } = input;
 
-    return agents;
-  }),
+      const query: any = {
+        userId: ctx.auth.user.id,
+      };
+
+      if (search) {
+        query.name = { $regex: search, $options: "i" }; // like ilike
+      }
+
+      const items = await Agent.find(query)
+        .sort({ createdAt: -1, id: -1 })
+        .skip((page - 1) * pageSize)
+        .limit(pageSize);
+
+      const total = await Agent.countDocuments(query);
+
+      const totalPages = Math.ceil(total / pageSize);
+
+      return {
+        items: items.map((item) => ({
+          meetingCount: 6, // TODO: replace with real count later
+          ...item.toObject(),
+        })),
+        total,
+        totalPages,
+      };
+    }),
 
   create: protectedProcedure
     .input(agentsInsertSchema)
