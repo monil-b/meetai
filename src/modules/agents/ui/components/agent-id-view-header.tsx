@@ -15,9 +15,9 @@ import {
 import Link from "next/link";
 import {
   ChevronRightIcon,
-  TractorIcon,
+  TrashIcon,
   PencilIcon,
-  MoreVertical,
+  MoreVerticalIcon,
 } from "lucide-react";
 
 interface Props {
@@ -56,7 +56,7 @@ export const AgentIdViewHeader = ({
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost">
-            <MoreVertical />
+            <MoreVerticalIcon />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -65,7 +65,7 @@ export const AgentIdViewHeader = ({
             Edit
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onRemove}>
-            <TractorIcon className="size-4 text-black" />
+            <TrashIcon className="size-4 text-black" />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
