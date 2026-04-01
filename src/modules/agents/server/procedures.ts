@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { connectDB } from "@/db";
 import { Agent } from "@/db/schema";
@@ -16,26 +17,31 @@ export const agentsRouter = createTRPCRouter({
     .query(async ({ input, ctx }) => {
       await connectDB();
 
-      const agent = await Agent.findOne({
+      const existingAgent = await Agent.findOne({
         id: input.id,
         userId: ctx.auth.user.id,
       });
 
-      if (!agent) return null;
+      if (!existingAgent) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agent not found",
+        });
+      }
 
       return {
-        meetingCount: 5, // TODO: replace with real count later
-        ...agent.toObject(),
+        meetingCount: 5, // TODO: replace with real count
+        ...existingAgent.toObject(),
       };
     }),
 
+  // Get many agents (pagination + search)
   getMany: protectedProcedure
     .input(
       z.object({
-        page: z.number().int().min(1).default(DEFAULT_PAGE),
+        page: z.number().default(DEFAULT_PAGE),
         pageSize: z
           .number()
-          .int()
           .min(MIN_PAGE_SIZE)
           .max(MAX_PAGE_SIZE)
           .default(DEFAULT_PAGE_SIZE),
@@ -55,18 +61,17 @@ export const agentsRouter = createTRPCRouter({
         query.name = { $regex: search, $options: "i" }; // like ilike
       }
 
-      const items = await Agent.find(query)
-        .sort({ createdAt: -1, id: -1 })
+      const data = await Agent.find(query)
+        .sort({ createdAt: -1, _id: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize);
 
       const total = await Agent.countDocuments(query);
-
       const totalPages = Math.ceil(total / pageSize);
 
       return {
-        items: items.map((item) => ({
-          meetingCount: 6, // TODO: replace with real count later
+        items: data.map((item) => ({
+          meetingCount: 5, // TODO: replace with real count
           ...item.toObject(),
         })),
         total,
@@ -74,16 +79,17 @@ export const agentsRouter = createTRPCRouter({
       };
     }),
 
+  // Create agent
   create: protectedProcedure
     .input(agentsInsertSchema)
     .mutation(async ({ input, ctx }) => {
       await connectDB();
 
-      const agent = await Agent.create({
+      const createdAgent = await Agent.create({
         ...input,
         userId: ctx.auth.user.id,
       });
 
-      return agent;
+      return createdAgent;
     }),
 });
