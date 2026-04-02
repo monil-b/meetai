@@ -4,9 +4,9 @@ import { dehydrate } from "@tanstack/react-query";
 // import { ErrorBoundary } from "next/dist/client/components/error-boundary";
 import { ErrorBoundary } from "react-error-boundary";
 import { Suspense } from "react";
-import { AgentIdView } from "@/modules/agents/ui/views/agents-id-view";
-import { AgentIdViewError } from "@/modules/agents/ui/views/agents-id-view";
-import { AgentIdViewLoading } from "@/modules/agents/ui/views/agents-id-view";
+import { AgentIdView } from "@/modules/agents/ui/views/agent-id-view";
+import { AgentIdViewError } from "@/modules/agents/ui/views/agent-id-view";
+import { AgentIdViewLoading } from "@/modules/agents/ui/views/agent-id-view";
 interface Props{
     params:Promise <{agentId:string}>
 }
