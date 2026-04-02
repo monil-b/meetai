@@ -9,9 +9,56 @@ import {
   MAX_PAGE_SIZE,
   MIN_PAGE_SIZE,
 } from "@/constants";
-import { agentsInsertSchema } from "../schemas";
+import { agentsInsertSchema, agentsUpdateSchema } from "../schemas";
 
 export const agentsRouter = createTRPCRouter({
+  // Update agent
+  update: protectedProcedure
+    .input(agentsUpdateSchema)
+    .mutation(async ({ ctx, input }) => {
+      await connectDB();
+
+      const updatedAgent = await Agent.findOneAndUpdate(
+        {
+          id: input.id,
+          userId: ctx.auth.user.id,
+        },
+        input,
+        { new: true }
+      );
+
+      if (!updatedAgent) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agent not found",
+        });
+      }
+
+      return updatedAgent;
+    }),
+
+  // Delete agent
+  remove: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await connectDB();
+
+      const removedAgent = await Agent.findOneAndDelete({
+        id: input.id,
+        userId: ctx.auth.user.id,
+      });
+
+      if (!removedAgent) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agent not found",
+        });
+      }
+
+      return removedAgent;
+    }),
+
+  // Get single agent
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -58,7 +105,7 @@ export const agentsRouter = createTRPCRouter({
       };
 
       if (search) {
-        query.name = { $regex: search, $options: "i" }; // like ilike
+        query.name = { $regex: search, $options: "i" };
       }
 
       const data = await Agent.find(query)
@@ -71,7 +118,7 @@ export const agentsRouter = createTRPCRouter({
 
       return {
         items: data.map((item) => ({
-          meetingCount: 5, // TODO: replace with real count
+          meetingCount: 6, // TODO: replace with real count
           ...item.toObject(),
         })),
         total,
