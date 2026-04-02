@@ -1,9 +1,9 @@
-import {nanoid} from "nanoid";
+import { nanoid } from "nanoid";
 import { Schema, model, models } from "mongoose";
 
 const userSchema = new Schema(
   {
-    id: { type: String, required: true }, 
+    id: { type: String, required: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
     emailVerified: { type: Boolean, default: false },
@@ -21,7 +21,7 @@ const sessionSchema = new Schema(
     token: { type: String, required: true, unique: true },
     ipAddress: { type: String },
     userAgent: { type: String },
-    userId: { type: String, required: true, index: true }, 
+    userId: { type: String, required: true, index: true },
   },
   { timestamps: true }
 );
@@ -59,16 +59,42 @@ const verificationSchema = new Schema(
   { timestamps: true }
 );
 
-export const Verification = models.Verification || model("Verification", verificationSchema, "verification");
+export const Verification =
+  models.Verification || model("Verification", verificationSchema, "verification");
 
 const agentSchema = new Schema(
   {
     id: { type: String, default: () => nanoid() },
     name: { type: String, required: true },
-    userId: { type: String, required: true, index: true }, 
+    userId: { type: String, required: true, index: true },
     instructions: { type: String, required: true },
   },
   { timestamps: true }
 );
 
 export const Agent = models.Agent || model("Agent", agentSchema, "agents");
+
+const meetingSchema = new Schema(
+  {
+    id: { type: String, default: () => nanoid() },
+    name: { type: String, required: true },
+    userId: { type: String, required: true, index: true },
+    agentId: { type: String, required: true, index: true },
+
+    status: {
+      type: String,
+      enum: ["upcoming", "active", "completed", "processing", "cancelled"],
+      default: "upcoming",
+    },
+
+    startedAt: { type: Date },
+    endedAt: { type: Date },
+    transcriptUrl: { type: String },
+    recordingUrl: { type: String },
+    summary: { type: String },
+  },
+  { timestamps: true }
+);
+
+export const Meeting =
+  models.Meeting || model("Meeting", meetingSchema, "meetings");
