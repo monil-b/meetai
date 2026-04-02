@@ -13,7 +13,7 @@ import { GeneratedAvatar } from "@/components/generated-avatar";
 import { Badge } from "@/components/ui/badge";
 import { VideoIcon } from "lucide-react";
 import type { AgentGetOne } from "../../types";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -33,7 +33,7 @@ export const AgentIdView = ({ agentId }: Props) => {
   );
   const removeAgent = useMutation(
     trpc.agents.remove.mutationOptions({
-      onsuccess: async () => {
+      onSuccess: async () => {
         await queryClient.invalidateQueries(
           trpc.agents.getMany.queryOptions({}),
         );
@@ -48,7 +48,7 @@ export const AgentIdView = ({ agentId }: Props) => {
   const agent = data as AgentGetOne;
   const [RemoveConfirmation, confirmRemove] = useConfirm(
     "Are you sure?",
-    `The following action will remove ${data.meetingCount} associated meetings`,
+    `The following action will remove ${agent.meetingCount} associated meetings`,
   );
   const handleRemoveAgent = async () => {
     const ok = await confirmRemove();

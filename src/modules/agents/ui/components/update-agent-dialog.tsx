@@ -26,7 +26,7 @@ export const UpdateAgentDialog = ({
         onCancel={() => {
           onOpenChange(false);
         }}
-        initialValues={}
+        initialValues={initialValues}
       />
     </ResponsiveDialog>
   );

@@ -10,11 +10,13 @@ export const useConfirm = (
   const [promise, setPromise] = useState<{
     resolve: (value: boolean) => void;
   } | null>(null);
+
   const confirm = () => {
     return new Promise((resolve) => {
       setPromise({ resolve });
     });
   };
+
   const handleClose = () => {
     setPromise(null);
   };
@@ -27,6 +29,7 @@ export const useConfirm = (
     promise?.resolve(false);
     handleClose();
   };
+
   const ConfirmationDialog = () => (
     <ResponsiveDialog
       open={promise !== null}
@@ -40,7 +43,7 @@ export const useConfirm = (
           variant="outline"
           className="w-full lg:w-auto"
         >
-          Cancle
+          Cancel
         </Button>
         <Button onClick={handleConfirm} className="w-full lg:w-auto">
           Confirm
