@@ -1,20 +1,19 @@
 import { z } from "zod";
 import { toast } from "sonner";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { useTRPC } from "@/trpc/client";
+
 import { CommandSelect } from "@/components/comand-select";
 import { GeneratedAvatar } from "@/components/generated-avatar";
-import { useTRPC } from "@/trpc/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { meetingsInsertSchema } from "../../schema";
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { meetingsInsertSchema } from "../../schema";
-import { useState } from "react";
+
 import { NewAgentDialog } from "@/modules/agents/ui/components/new-agent-dialog";
+
 import {
   Form,
   FormControl,
@@ -26,6 +25,7 @@ import {
 } from "@/components/ui/form";
 
 import { MeetingGetOne } from "../../types";
+import { meetingsInsertSchema } from "../../schemas";
 
 interface MeetingFormProps {
   onSuccess?: (id?: string) => void;
@@ -36,12 +36,12 @@ interface MeetingFormProps {
 export const MeetingForm = ({
   onSuccess,
   onCancel,
-  initialValues,
+  initialValues, 
 }: MeetingFormProps) => {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  const [openNewAgentSelect, setOpenNewAgentSelect] = useState(false);
+  const [openNewAgentDialog, setOpenNewAgentDialog] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
 
   const agents = useQuery(
@@ -92,13 +92,6 @@ export const MeetingForm = ({
     },
   });
 
-  const [agentSearch, setAgentSearch] = useState("");
-  const agents = useQuery(
-    trpc.agents.getMany.queryOptions({
-      pageSize: 100,
-      search: agentSearch,
-    }),
-  );
   const isEdit = !!initialValues?.id;
   const isPending = createMeeting.isPending || updateMeeting.isPending;
 
@@ -125,7 +118,7 @@ export const MeetingForm = ({
               <FormItem>
                 <FormLabel>Name</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="e.g.Math Consuitations" />
+                  <Input {...field} placeholder="e.g.Math Consultations" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -156,11 +149,12 @@ export const MeetingForm = ({
                     }))}
                     onSelect={field.onChange}
                     onSearch={setAgentSearch}
+                    value={field.value}
                     placeholder="Select an agent"
                   />
                 </FormControl>
                 <FormDescription>
-                  Not found what &apos;re looking for? {""}
+                  Not found what you&apos;re looking for? {""}
                   <button
                     type="button"
                     className=" text-primary hover:underline"
