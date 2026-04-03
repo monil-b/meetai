@@ -72,7 +72,7 @@ const agentSchema = new Schema(
   { timestamps: true }
 );
 
-export const Agent = models.Agent || model("Agent", agentSchema, "agents");
+export const Agents = models.Agents || model("Agents", agentSchema, "agents");
 
 const meetingSchema = new Schema(
   {
@@ -96,5 +96,5 @@ const meetingSchema = new Schema(
   { timestamps: true }
 );
 
-export const Meeting =
-  models.Meeting || model("Meeting", meetingSchema, "meetings");
+export const Meetings =
+  models.Meetings || model("Meetings", meetingSchema, "meetings");

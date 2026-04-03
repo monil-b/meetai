@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { connectDB } from "@/db";
-import { Agent } from "@/db/schema";
+import { Agents } from "@/db/schema";
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
@@ -18,7 +18,7 @@ export const agentsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await connectDB();
 
-      const updatedAgent = await Agent.findOneAndUpdate(
+      const updatedAgent = await Agents.findOneAndUpdate(
         {
           id: input.id,
           userId: ctx.auth.user.id,
@@ -43,7 +43,7 @@ export const agentsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await connectDB();
 
-      const removedAgent = await Agent.findOneAndDelete({
+      const removedAgent = await Agents.findOneAndDelete({
         id: input.id,
         userId: ctx.auth.user.id,
       });
@@ -64,7 +64,7 @@ export const agentsRouter = createTRPCRouter({
     .query(async ({ input, ctx }) => {
       await connectDB();
 
-      const existingAgent = await Agent.findOne({
+      const existingAgent = await Agents.findOne({
         id: input.id,
         userId: ctx.auth.user.id,
       });
@@ -108,12 +108,12 @@ export const agentsRouter = createTRPCRouter({
         query.name = { $regex: search, $options: "i" };
       }
 
-      const data = await Agent.find(query)
+      const data = await Agents.find(query)
         .sort({ createdAt: -1, _id: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize);
 
-      const total = await Agent.countDocuments(query);
+      const total = await Agents.countDocuments(query);
       const totalPages = Math.ceil(total / pageSize);
 
       return {
@@ -132,7 +132,7 @@ export const agentsRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       await connectDB();
 
-      const createdAgent = await Agent.create({
+      const createdAgent = await Agents.create({
         ...input,
         userId: ctx.auth.user.id,
       });
