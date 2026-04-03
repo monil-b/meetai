@@ -6,18 +6,15 @@ import { ColumnDef } from "@tanstack/react-table";
 import { MeetingGetMany } from "../../types";
 import { GeneratedAvatar } from "@/components/generated-avatar";
 import {
-  CornerDownRightIcon
   CircleCheckIcon,
   CircleXIcon,
   ClockArrowUpIcon,
   ClockFadingIcon,
+  CornerDownRightIcon,
   LoaderIcon,
-  Icon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-
-type Meeting = MeetingGetMany[number];
 
 function formatDuration(seconds: number) {
   return humanizeDuration(seconds * 1000, {
@@ -41,7 +38,7 @@ const statusColorMap = {
   processing: "bg-gray-300/20 text-gray-800 border-gray-800/5",
 };
 
-export const columns: ColumnDef<MeetingGetMany>[number] = [
+export const columns: ColumnDef<MeetingGetMany[number]>[] = [
   {
     accessorKey: "name",
     header: "Meeting Name",
@@ -52,7 +49,7 @@ export const columns: ColumnDef<MeetingGetMany>[number] = [
           <div className="flex items-center gap-x-1">
             <CornerDownRightIcon className="size-3 text-muted-foreground" />
             <span className="text-sm text-muted-foreground max-w-[200px] truncate capitalize">
-            {row.original.agent.name}
+              {row.original.agent.name}
             </span>
           </div>
           <GeneratedAvatar
@@ -62,7 +59,9 @@ export const columns: ColumnDef<MeetingGetMany>[number] = [
           />
 
           <span className="text-sm text-muted-foreground">
-           {row.original.startedAt ? format(row.original.startedAt, "MMM d") : ""}
+            {row.original.startedAt
+              ? format(row.original.startedAt, "MMM d")
+              : ""}
           </span>
         </div>
       </div>
@@ -72,23 +71,25 @@ export const columns: ColumnDef<MeetingGetMany>[number] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-      const icon =statusIconMap[row.original.status as keyof typeof statusIconMap];
+      const Icon =
+        statusIconMap[row.original.status as keyof typeof statusIconMap];
 
       return (
         <Badge
-        variant="outline"
-        className={cn(
-          "capitalize [&>svg]:size-4 text-muted-foreground",
-          statusColorMap[row.original.status as keyof typeof statusColorMap]
-        )} >
+          variant="outline"
+          className={cn(
+            "capitalize [&>svg]:size-4 text-muted-foreground",
+            statusColorMap[row.original.status as keyof typeof statusColorMap],
+          )}
+        >
           <Icon
             className={cn(
               row.original.status == "processing" && "animate-spin",
-            )} 
+            )}
           />
           {row.original.status}
         </Badge>
-      )
+      );
     },
   },
   {
@@ -100,9 +101,10 @@ export const columns: ColumnDef<MeetingGetMany>[number] = [
         className="capitalize [&>svg]:size-4 flex items-center gap-x-2"
       >
         <ClockFadingIcon className="text-blue-700" />
-        {row.original.duration ? formatDuration(row.original.duration) : "No duration"}
-
+        {row.original.duration
+          ? formatDuration(row.original.duration)
+          : "No duration"}
       </Badge>
     ),
-  }
+  },
 ];
