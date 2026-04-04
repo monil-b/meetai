@@ -10,6 +10,8 @@ import { AgentIdFilter } from "./agent-id-filter";
 import { useMeetingsFilters } from "../../hooks/use-meetings-filters";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
+import { DEFAULT_PAGE } from '@/constants';
+
 export const MeetingsListHeader = () => {
   const [filters, setFilters] = useMeetingsFilters();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -22,7 +24,7 @@ export const MeetingsListHeader = () => {
       status: null,
       agentId: "",
       search: "",
-      page: 1,
+      page: DEFAULT_PAGE,
     });
   };
 
