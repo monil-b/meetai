@@ -1,14 +1,15 @@
 import { ReactNode, useState } from "react";
-import {
-  CommandEmpty,
-  CommandList,
-  CommandInput,
-  CommandItem,
-  CommandResponsiveDialog,
-} from "@/components/ui/command";
+import { ChevronsUpDownIcon } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ChevronsUpDownIcon } from "lucide-react";
+import {
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandResponsiveDialog,
+} from "@/components/ui/command";
 
 interface Props {
   options: Array<{
@@ -16,7 +17,6 @@ interface Props {
     value: string;
     children: ReactNode;
   }>;
-
   onSelect: (value: string) => void;
   onSearch?: (value: string) => void;
   value: string;
@@ -36,6 +36,11 @@ export const CommandSelect = ({
   const [open, setOpen] = useState(false);
   const selectedOption = options.find((option) => option.value === value);
 
+  const handleOpenChange = (open: boolean) => {
+    onSearch?.("");
+    setOpen(open);
+  };
+
   return (
     <>
       <Button
@@ -51,17 +56,16 @@ export const CommandSelect = ({
         <div>{selectedOption?.children ?? placeholder}</div>
         <ChevronsUpDownIcon />
       </Button>
-
       <CommandResponsiveDialog
         shouldFilter={!onSearch}
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={handleOpenChange}
       >
         <CommandInput placeholder="Search..." onValueChange={onSearch} />
         <CommandList>
           <CommandEmpty>
-            <span className="text-muted-foreground tex-sm">
-              No Options Found.
+            <span className="text-muted-foreground text-sm">
+              No options found
             </span>
           </CommandEmpty>
           {options.map((option) => (

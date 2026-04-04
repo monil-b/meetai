@@ -32,7 +32,7 @@ export const AgentsView = () => {
       <DataPagination
         page={filters.page}
         totalPages={data.totalPages}
-        onPgaeChange={(page) => setFilters({ page })}
+        onPageChange={(page) => setFilters({ page })}
       />
       {data.items.length === 0 && (
         <EmptyState
