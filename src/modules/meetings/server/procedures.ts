@@ -10,6 +10,7 @@ import {
   MAX_PAGE_SIZE,
   MIN_PAGE_SIZE,
 } from "@/constants";
+import { MeetingStatus } from "../types";
 
 export const meetingsRouter = createTRPCRouter({
   // Update meeting
@@ -90,62 +91,80 @@ export const meetingsRouter = createTRPCRouter({
 
   // Get many meetings
   getMany: protectedProcedure
-    .input(
-      z.object({
-        page: z.number().default(DEFAULT_PAGE),
-        pageSize: z
-          .number()
-          .min(MIN_PAGE_SIZE)
-          .max(MAX_PAGE_SIZE)
-          .default(DEFAULT_PAGE_SIZE),
-        search: z.string().nullish(),
+  .input(
+    z.object({
+      page: z.number().default(DEFAULT_PAGE),
+      pageSize: z
+        .number()
+        .min(MIN_PAGE_SIZE)
+        .max(MAX_PAGE_SIZE)
+        .default(DEFAULT_PAGE_SIZE),
+      search: z.string().nullish(),
+      agentId: z.string().nullish(),
+      status: z
+        .enum([
+          MeetingStatus.Upcoming,
+          MeetingStatus.Active,
+          MeetingStatus.Completed,
+          MeetingStatus.Processing,
+          MeetingStatus.Cancelled,
+        ])
+        .nullish(),
+    })
+  )
+  .query(async ({ ctx, input }) => {
+    await connectDB();
+
+    const { search, page, pageSize, status, agentId } = input;
+
+    const query: any = {
+      userId: ctx.auth.user.id,
+    };
+
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
+    }
+
+    if (status) {
+      query.status = status;
+    }
+
+    if (agentId) {
+      query.agentId = agentId;
+    }
+
+    const meetings = await Meetings.find(query)
+      .sort({ createdAt: -1, id: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize);
+
+    const total = await Meetings.countDocuments(query);
+    const totalPages = Math.ceil(total / pageSize);
+
+    const items = await Promise.all(
+      meetings.map(async (meeting) => {
+        const agent = await Agents.findOne({ id: meeting.agentId });
+
+        let duration = 0;
+        if (meeting.startedAt && meeting.endedAt) {
+          duration =
+            (new Date(meeting.endedAt).getTime() -
+              new Date(meeting.startedAt).getTime()) /
+            1000;
+        }
+
+        return {
+          ...meeting.toObject(),
+          agent,
+          duration,
+        };
       })
-    )
-    .query(async ({ ctx, input }) => {
-      await connectDB();
+    );
 
-      const { search, page, pageSize } = input;
-
-      const query: any = {
-        userId: ctx.auth.user.id,
-      };
-
-      if (search) {
-        query.name = { $regex: search, $options: "i" };
-      }
-
-      const meetings = await Meetings.find(query)
-        .sort({ createdAt: -1, id: -1 })
-        .skip((page - 1) * pageSize)
-        .limit(pageSize);
-
-      const total = await Meetings.countDocuments(query);
-      const totalPages = Math.ceil(total / pageSize);
-
-      const items = await Promise.all(
-        meetings.map(async (meeting) => {
-          const agent = await Agents.findOne({ id: meeting.agentId });
-
-          let duration = 0;
-          if (meeting.startedAt && meeting.endedAt) {
-            duration =
-              (new Date(meeting.endedAt).getTime() -
-                new Date(meeting.startedAt).getTime()) /
-              1000;
-          }
-
-          return {
-            ...meeting.toObject(),
-            agent,
-            duration,
-          };
-        })
-      );
-
-      return {
-        items,
-        total,
-        totalPages,
-      };
-    }),
+    return {
+      items,
+      total,
+      totalPages,
+    };
+  }),
 });
