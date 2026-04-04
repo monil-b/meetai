@@ -13,6 +13,27 @@ import {
 import { MeetingStatus } from "../types";
 
 export const meetingsRouter = createTRPCRouter({
+  // Delete meeting
+  remove: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await connectDB();
+
+      const removedMeeting = await Meetings.findOneAndDelete({
+        id: input.id,
+        userId: ctx.auth.user.id,
+      });
+
+      if (!removedMeeting) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Meeting not found",
+        });
+      }
+
+      return removedMeeting;
+    }),
+
   // Update meeting
   update: protectedProcedure
     .input(meetingsUpdateSchema)
@@ -52,7 +73,7 @@ export const meetingsRouter = createTRPCRouter({
       return createdMeeting;
     }),
 
-  // Get single meeting
+  // Get one meeting (with agent + duration)
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -70,10 +91,8 @@ export const meetingsRouter = createTRPCRouter({
         });
       }
 
-      // get agent info
       const agent = await Agents.findOne({ id: meeting.agentId });
 
-      // calculate duration
       let duration = 0;
       if (meeting.startedAt && meeting.endedAt) {
         duration =
@@ -91,60 +110,66 @@ export const meetingsRouter = createTRPCRouter({
 
   // Get many meetings
   getMany: protectedProcedure
-  .input(
-    z.object({
-      page: z.number().default(DEFAULT_PAGE),
-      pageSize: z
-        .number()
-        .min(MIN_PAGE_SIZE)
-        .max(MAX_PAGE_SIZE)
-        .default(DEFAULT_PAGE_SIZE),
-      search: z.string().nullish(),
-      agentId: z.string().nullish(),
-      status: z
-        .enum([
-          MeetingStatus.Upcoming,
-          MeetingStatus.Active,
-          MeetingStatus.Completed,
-          MeetingStatus.Processing,
-          MeetingStatus.Cancelled,
-        ])
-        .nullish(),
-    })
-  )
-  .query(async ({ ctx, input }) => {
-    await connectDB();
+    .input(
+      z.object({
+        page: z.number().default(DEFAULT_PAGE),
+        pageSize: z
+          .number()
+          .min(MIN_PAGE_SIZE)
+          .max(MAX_PAGE_SIZE)
+          .default(DEFAULT_PAGE_SIZE),
+        search: z.string().nullish(),
+        agentId: z.string().nullish(),
+        status: z
+          .enum([
+            MeetingStatus.Upcoming,
+            MeetingStatus.Active,
+            MeetingStatus.Completed,
+            MeetingStatus.Processing,
+            MeetingStatus.Cancelled,
+          ])
+          .nullish(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      await connectDB();
 
-    const { search, page, pageSize, status, agentId } = input;
+      const { search, page, pageSize, status, agentId } = input;
 
-    const query: any = {
-      userId: ctx.auth.user.id,
-    };
+      const query: any = {
+        userId: ctx.auth.user.id,
+      };
 
-    if (search) {
-      query.name = { $regex: search, $options: "i" };
-    }
+      if (search) {
+        query.name = { $regex: search, $options: "i" };
+      }
 
-    if (status) {
-      query.status = status;
-    }
+      if (status) {
+        query.status = status;
+      }
 
-    if (agentId) {
-      query.agentId = agentId;
-    }
+      if (agentId) {
+        query.agentId = agentId;
+      }
 
-    const meetings = await Meetings.find(query)
-      .sort({ createdAt: -1, id: -1 })
-      .skip((page - 1) * pageSize)
-      .limit(pageSize);
+      const meetings = await Meetings.find(query)
+        .sort({ createdAt: -1, id: -1 })
+        .skip((page - 1) * pageSize)
+        .limit(pageSize);
 
-    const total = await Meetings.countDocuments(query);
-    const totalPages = Math.ceil(total / pageSize);
+      const total = await Meetings.countDocuments(query);
+      const totalPages = Math.ceil(total / pageSize);
 
-    const items = await Promise.all(
-      meetings.map(async (meeting) => {
-        const agent = await Agents.findOne({ id: meeting.agentId });
+      // Optimize agent fetching (avoid N queries)
+      const agentIds = meetings.map((m) => m.agentId);
+      const agents = await Agents.find({ id: { $in: agentIds } });
 
+      const agentMap: any = {};
+      agents.forEach((a) => {
+        agentMap[a.id] = a;
+      });
+
+      const items = meetings.map((meeting) => {
         let duration = 0;
         if (meeting.startedAt && meeting.endedAt) {
           duration =
@@ -155,16 +180,15 @@ export const meetingsRouter = createTRPCRouter({
 
         return {
           ...meeting.toObject(),
-          agent,
+          agent: agentMap[meeting.agentId],
           duration,
         };
-      })
-    );
+      });
 
-    return {
-      items,
-      total,
-      totalPages,
-    };
-  }),
+      return {
+        items,
+        total,
+        totalPages,
+      };
+    }),
 });

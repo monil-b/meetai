@@ -21,15 +21,15 @@ import {
 } from "lucide-react";
 
 interface Props {
-  MeetingId: string;
-  MeetingName: string;
+  meetingId: string;
+  meetingName: string;
   onEdit: () => void;
   onRemove: () => void;
 }
 
 export const MeetingIdViewHeader = ({
-  MeetingId,
-  MeetingName,
+  meetingId,
+  meetingName,
   onEdit,
   onRemove,
 }: Props) => {
@@ -52,7 +52,7 @@ export const MeetingIdViewHeader = ({
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      {/*Without model={false} */}
+      {/*Without modal={false} */}
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost">

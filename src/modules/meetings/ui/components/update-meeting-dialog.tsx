@@ -8,6 +8,7 @@ interface UpdateMeetingDialogProps {
   onOpenChange: (open: boolean) => void;
   initialValues: MeetingGetOne;
 }
+
 export const UpdateMeetingDialog = ({
   open,
   onOpenChange,
@@ -18,13 +19,12 @@ export const UpdateMeetingDialog = ({
   return (
     <ResponsiveDialog
       title="Edit Meeting"
-      description="Update the meeting details"
+      description="Edit the meeting details"
       open={open}
       onOpenChange={onOpenChange}
     >
       <MeetingForm
-        onSuccess={() => {
-          onOpenChange(false);}}
+        onSuccess={() => onOpenChange(false)}
         onCancel={() => onOpenChange(false)}
         initialValues={initialValues}
       />
