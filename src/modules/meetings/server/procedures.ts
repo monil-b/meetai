@@ -5,6 +5,7 @@ import { connectDB } from "@/db";
 import { Meetings, Agents } from "@/db/schema";
 import { generateAvatarUri } from "@/lib/avatar";
 import { streamVideo } from "@/lib/stream-video";
+import { serialize } from "@/lib/serialize";
 
 import {
   DEFAULT_PAGE,
@@ -17,8 +18,6 @@ import { MeetingStatus } from "../types";
 import { meetingsInsertSchema, meetingsUpdateSchema } from "../schemas";
 
 export const meetingsRouter = createTRPCRouter({
-
-  // Generate token
   generateToken: protectedProcedure.mutation(async ({ ctx }) => {
     await streamVideo.upsertUsers([
       {
@@ -27,10 +26,7 @@ export const meetingsRouter = createTRPCRouter({
         role: "admin",
         image:
           ctx.auth.user.image ??
-          generateAvatarUri({
-            seed: ctx.auth.user.name,
-            variant: "initials",
-          }),
+          generateAvatarUri({ seed: ctx.auth.user.name, variant: "initials" }),
       },
     ]);
 
@@ -46,72 +42,59 @@ export const meetingsRouter = createTRPCRouter({
     return token;
   }),
 
-  // DELETE
   remove: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await connectDB();
 
-      const removed = await Meetings.findOneAndDelete({
+      const removedMeeting = await Meetings.findOneAndDelete({
         id: input.id,
         userId: ctx.auth.user.id,
       });
 
-      if (!removed) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Meeting not found",
-        });
+      if (!removedMeeting) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Meeting not found" });
       }
 
-      return removed;
+      return serialize(removedMeeting);
     }),
 
-  // UPDATE
   update: protectedProcedure
     .input(meetingsUpdateSchema)
     .mutation(async ({ ctx, input }) => {
       await connectDB();
 
-      const updated = await Meetings.findOneAndUpdate(
-        {
-          id: input.id,
-          userId: ctx.auth.user.id,
-        },
+      const updatedMeeting = await Meetings.findOneAndUpdate(
+        { id: input.id, userId: ctx.auth.user.id },
         input,
         { new: true }
       );
 
-      if (!updated) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Meeting not found",
-        });
+      if (!updatedMeeting) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Meeting not found" });
       }
 
-      return updated;
+      return serialize(updatedMeeting);
     }),
 
-  // CREATE
   create: protectedProcedure
     .input(meetingsInsertSchema)
     .mutation(async ({ input, ctx }) => {
       await connectDB();
 
-      const created = await Meetings.create({
+      const createdMeeting = await Meetings.create({
         ...input,
         userId: ctx.auth.user.id,
       });
 
-      // Stream Call
-      const call = streamVideo.video.call("default", created.id);
+      const call = streamVideo.video.call("default", createdMeeting.id);
 
       await call.create({
         data: {
           created_by_id: ctx.auth.user.id,
           custom: {
-            meetingId: created.id,
-            meetingName: created.name,
+            meetingId: createdMeeting.id,
+            meetingName: createdMeeting.name,
           },
           settings_override: {
             transcription: {
@@ -127,14 +110,10 @@ export const meetingsRouter = createTRPCRouter({
         },
       });
 
-      // Agent fetch
-      const agent = await Agents.findOne({ id: created.agentId });
+      const agent = await Agents.findOne({ id: createdMeeting.agentId });
 
       if (!agent) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Agent not found",
-        });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found" });
       }
 
       await streamVideo.upsertUsers([
@@ -149,10 +128,9 @@ export const meetingsRouter = createTRPCRouter({
         },
       ]);
 
-      return created;
+      return serialize(createdMeeting);
     }),
 
-  // GET ONE
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -164,10 +142,7 @@ export const meetingsRouter = createTRPCRouter({
       });
 
       if (!meeting) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Meeting not found",
-        });
+        throw new TRPCError({ code: "NOT_FOUND", message: "Meeting not found" });
       }
 
       const agent = await Agents.findOne({ id: meeting.agentId });
@@ -180,23 +155,18 @@ export const meetingsRouter = createTRPCRouter({
           1000;
       }
 
-      return {
+      return serialize({
         ...meeting.toObject(),
         agent,
         duration,
-      };
+      });
     }),
 
-  // GET MANY (pagination + filters)
   getMany: protectedProcedure
     .input(
       z.object({
         page: z.number().default(DEFAULT_PAGE),
-        pageSize: z
-          .number()
-          .min(MIN_PAGE_SIZE)
-          .max(MAX_PAGE_SIZE)
-          .default(DEFAULT_PAGE_SIZE),
+        pageSize: z.number().min(MIN_PAGE_SIZE).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
         search: z.string().nullish(),
         agentId: z.string().nullish(),
         status: z
@@ -215,21 +185,11 @@ export const meetingsRouter = createTRPCRouter({
 
       const { search, page, pageSize, status, agentId } = input;
 
-      const query: any = {
-        userId: ctx.auth.user.id,
-      };
+      const query: any = { userId: ctx.auth.user.id };
 
-      if (search) {
-        query.name = { $regex: search, $options: "i" };
-      }
-
-      if (status) {
-        query.status = status;
-      }
-
-      if (agentId) {
-        query.agentId = agentId;
-      }
+      if (search) query.name = { $regex: search, $options: "i" };
+      if (status) query.status = status;
+      if (agentId) query.agentId = agentId;
 
       const meetings = await Meetings.find(query)
         .sort({ createdAt: -1, id: -1 })
@@ -249,7 +209,6 @@ export const meetingsRouter = createTRPCRouter({
 
       const items = meetings.map((meeting) => {
         let duration = 0;
-
         if (meeting.startedAt && meeting.endedAt) {
           duration =
             (new Date(meeting.endedAt).getTime() -
@@ -264,10 +223,10 @@ export const meetingsRouter = createTRPCRouter({
         };
       });
 
-      return {
+      return serialize({
         items,
         total,
         totalPages,
-      };
+      });
     }),
 });

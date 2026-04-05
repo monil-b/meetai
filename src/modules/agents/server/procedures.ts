@@ -3,16 +3,18 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { connectDB } from "@/db";
 import { Agents } from "@/db/schema";
+import { serialize } from "@/lib/serialize";
+
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   MIN_PAGE_SIZE,
 } from "@/constants";
+
 import { agentsInsertSchema, agentsUpdateSchema } from "../schemas";
 
 export const agentsRouter = createTRPCRouter({
-  // Update agent
   update: protectedProcedure
     .input(agentsUpdateSchema)
     .mutation(async ({ ctx, input }) => {
@@ -34,10 +36,9 @@ export const agentsRouter = createTRPCRouter({
         });
       }
 
-      return updatedAgent;
+      return serialize(updatedAgent);
     }),
 
-  // Delete agent
   remove: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -55,10 +56,9 @@ export const agentsRouter = createTRPCRouter({
         });
       }
 
-      return removedAgent;
+      return serialize(removedAgent);
     }),
 
-  // Get single agent
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -76,13 +76,12 @@ export const agentsRouter = createTRPCRouter({
         });
       }
 
-      return {
-        meetingCount: 5, // TODO: replace with real count
+      return serialize({
+        meetingCount: 5,
         ...existingAgent.toObject(),
-      };
+      });
     }),
 
-  // Get many agents (pagination + search)
   getMany: protectedProcedure
     .input(
       z.object({
@@ -109,24 +108,23 @@ export const agentsRouter = createTRPCRouter({
       }
 
       const data = await Agents.find(query)
-        .sort({ createdAt: -1, _id: -1 })
+        .sort({ createdAt: -1, id: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize);
 
       const total = await Agents.countDocuments(query);
       const totalPages = Math.ceil(total / pageSize);
 
-      return {
+      return serialize({
         items: data.map((item) => ({
-          meetingCount: 6, // TODO: replace with real count
+          meetingCount: 6,
           ...item.toObject(),
         })),
         total,
         totalPages,
-      };
+      });
     }),
 
-  // Create agent
   create: protectedProcedure
     .input(agentsInsertSchema)
     .mutation(async ({ input, ctx }) => {
@@ -137,6 +135,6 @@ export const agentsRouter = createTRPCRouter({
         userId: ctx.auth.user.id,
       });
 
-      return createdAgent;
+      return serialize(createdAgent);
     }),
 });
