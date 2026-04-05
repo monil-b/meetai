@@ -3,44 +3,77 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { connectDB } from "@/db";
 import { Meetings, Agents } from "@/db/schema";
-import { meetingsInsertSchema, meetingsUpdateSchema } from "../schemas";
+import { generateAvatarUri } from "@/lib/avatar";
+import { streamVideo } from "@/lib/stream-video";
+
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   MIN_PAGE_SIZE,
 } from "@/constants";
+
 import { MeetingStatus } from "../types";
+import { meetingsInsertSchema, meetingsUpdateSchema } from "../schemas";
 
 export const meetingsRouter = createTRPCRouter({
-  // Delete meeting
+
+  // Generate token
+  generateToken: protectedProcedure.mutation(async ({ ctx }) => {
+    await streamVideo.upsertUsers([
+      {
+        id: ctx.auth.user.id,
+        name: ctx.auth.user.name,
+        role: "admin",
+        image:
+          ctx.auth.user.image ??
+          generateAvatarUri({
+            seed: ctx.auth.user.name,
+            variant: "initials",
+          }),
+      },
+    ]);
+
+    const expirationTime = Math.floor(Date.now() / 1000) + 3600;
+    const issuedAt = Math.floor(Date.now() / 1000) - 60;
+
+    const token = streamVideo.generateUserToken({
+      user_id: ctx.auth.user.id,
+      exp: expirationTime,
+      validity_in_seconds: issuedAt,
+    });
+
+    return token;
+  }),
+
+  // DELETE
   remove: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await connectDB();
 
-      const removedMeeting = await Meetings.findOneAndDelete({
+      const removed = await Meetings.findOneAndDelete({
         id: input.id,
         userId: ctx.auth.user.id,
       });
 
-      if (!removedMeeting) {
+      if (!removed) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Meeting not found",
         });
       }
 
-      return removedMeeting;
+      return removed;
     }),
 
-  // Update meeting
+  // UPDATE
   update: protectedProcedure
     .input(meetingsUpdateSchema)
     .mutation(async ({ ctx, input }) => {
       await connectDB();
 
-      const updatedMeeting = await Meetings.findOneAndUpdate(
+      const updated = await Meetings.findOneAndUpdate(
         {
           id: input.id,
           userId: ctx.auth.user.id,
@@ -49,31 +82,77 @@ export const meetingsRouter = createTRPCRouter({
         { new: true }
       );
 
-      if (!updatedMeeting) {
+      if (!updated) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Meeting not found",
         });
       }
 
-      return updatedMeeting;
+      return updated;
     }),
 
-  // Create meeting
+  // CREATE
   create: protectedProcedure
     .input(meetingsInsertSchema)
     .mutation(async ({ input, ctx }) => {
       await connectDB();
 
-      const createdMeeting = await Meetings.create({
+      const created = await Meetings.create({
         ...input,
         userId: ctx.auth.user.id,
       });
 
-      return createdMeeting;
+      // Stream Call
+      const call = streamVideo.video.call("default", created.id);
+
+      await call.create({
+        data: {
+          created_by_id: ctx.auth.user.id,
+          custom: {
+            meetingId: created.id,
+            meetingName: created.name,
+          },
+          settings_override: {
+            transcription: {
+              language: "en",
+              mode: "auto-on",
+              closed_caption_mode: "auto-on",
+            },
+            recording: {
+              mode: "auto-on",
+              quality: "1080p",
+            },
+          },
+        },
+      });
+
+      // Agent fetch
+      const agent = await Agents.findOne({ id: created.agentId });
+
+      if (!agent) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agent not found",
+        });
+      }
+
+      await streamVideo.upsertUsers([
+        {
+          id: agent.id,
+          name: agent.name,
+          role: "user",
+          image: generateAvatarUri({
+            seed: agent.name,
+            variant: "botttsNeutral",
+          }),
+        },
+      ]);
+
+      return created;
     }),
 
-  // Get one meeting (with agent + duration)
+  // GET ONE
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -108,7 +187,7 @@ export const meetingsRouter = createTRPCRouter({
       };
     }),
 
-  // Get many meetings
+  // GET MANY (pagination + filters)
   getMany: protectedProcedure
     .input(
       z.object({
@@ -160,17 +239,17 @@ export const meetingsRouter = createTRPCRouter({
       const total = await Meetings.countDocuments(query);
       const totalPages = Math.ceil(total / pageSize);
 
-      // Optimize agent fetching (avoid N queries)
       const agentIds = meetings.map((m) => m.agentId);
       const agents = await Agents.find({ id: { $in: agentIds } });
 
-      const agentMap: any = {};
+      const agentMap: Record<string, any> = {};
       agents.forEach((a) => {
         agentMap[a.id] = a;
       });
 
       const items = meetings.map((meeting) => {
         let duration = 0;
+
         if (meeting.startedAt && meeting.endedAt) {
           duration =
             (new Date(meeting.endedAt).getTime() -
