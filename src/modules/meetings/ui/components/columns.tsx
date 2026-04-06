@@ -42,30 +42,34 @@ export const columns: ColumnDef<MeetingGetMany[number]>[] = [
   {
     accessorKey: "name",
     header: "Meeting Name",
-    cell: ({ row }) => (
-      <div className="flex flex-col gap-y-1">
-        <span className="font-semibold capitalize">{row.original.name}</span>
-        <div className="flex items-center gap-x-2">
-          <div className="flex items-center gap-x-1">
-            <CornerDownRightIcon className="size-3 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground max-w-[200px] truncate capitalize">
-              {row.original.agent.name}
+    cell: ({ row }) => {
+      const agentName = row.original.agent?.name ?? "Unknown agent";
+
+      return (
+        <div className="flex flex-col gap-y-1">
+          <span className="font-semibold capitalize">{row.original.name}</span>
+          <div className="flex items-center gap-x-2">
+            <div className="flex items-center gap-x-1">
+              <CornerDownRightIcon className="size-3 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground max-w-[200px] truncate capitalize">
+                {agentName}
+              </span>
+            </div>
+            <GeneratedAvatar
+              variant="botttsNeutral"
+              seed={agentName}
+              className="size-4"
+            />
+
+            <span className="text-sm text-muted-foreground">
+              {row.original.startedAt
+                ? format(row.original.startedAt, "MMM d")
+                : ""}
             </span>
           </div>
-          <GeneratedAvatar
-            variant="botttsNeutral"
-            seed={row.original.agent.name}
-            className="size-4"
-          />
-
-          <span className="text-sm text-muted-foreground">
-            {row.original.startedAt
-              ? format(row.original.startedAt, "MMM d")
-              : ""}
-          </span>
         </div>
-      </div>
-    ),
+      );
+    },
   },
   {
     accessorKey: "status",
