@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "dev:webhook": "ngrok http --url=noninterpretable-shauna-patronymically.ngrok-free.dev 3000"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
@@ -14,8 +15,10 @@
     "@dicebear/collection": "^9.4.2",
     "@dicebear/core": "^9.4.2",
     "@hookform/resolvers": "^5.2.2",
+    "@inworld/nodejs-sdk": "^1.17.0",
     "@opentelemetry/api": "^1.9.0",
     "@stream-io/node-sdk": "^0.7.51",
+    "@stream-io/openai-realtime-api": "^0.3.3",
     "@stream-io/video-react-sdk": "^1.34.2",
     "@tanstack/react-query": "^5.95.2",
     "@tanstack/react-table": "^8.21.3",
