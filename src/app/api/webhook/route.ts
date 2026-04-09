@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  CallEndedEvent,
+  CallTranscriptionReadyEvent,
+  CallRecordingReadyEvent,
   CallSessionParticipantLeftEvent,
   CallSessionStartedEvent,
 } from "@stream-io/node-sdk";
 
 import { connectDB } from "@/db";
-import { Meetings, Agents } from "@/db/schema";
+import { Agents, Meetings } from "@/db/schema";
 import { streamVideo } from "@/lib/stream-video";
+import { inngest } from "@/inngest/client";
 
 function verifySignatureWithSDK(body: string, signature: string): boolean {
   return streamVideo.verifyWebhook(body, signature);
@@ -40,15 +44,13 @@ export async function POST(req: NextRequest) {
 
   const eventType = payload?.type;
 
+  // CALL STARTED
   if (eventType === "call.session_started") {
     const event = payload as CallSessionStartedEvent;
     const meetingId = event.call?.custom?.meetingId;
 
     if (!meetingId) {
-      return NextResponse.json(
-        { error: "Missing meetingId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing meetingId" }, { status: 400 });
     }
 
     const existingMeeting = await Meetings.findOne({
@@ -57,10 +59,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!existingMeeting) {
-      return NextResponse.json(
-        { error: "Meeting not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Meeting not found" }, { status: 404 });
     }
 
     await Meetings.updateOne(
@@ -76,10 +75,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!existingAgent) {
-      return NextResponse.json(
-        { error: "Agent not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     }
 
     const call = streamVideo.video.call("default", meetingId);
@@ -95,26 +91,70 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // PARTICIPANT LEFT
   else if (eventType === "call.session_participant_left") {
     const event = payload as CallSessionParticipantLeftEvent;
-
     const meetingId = event.call_cid.split(":")[1];
 
     if (!meetingId) {
-      return NextResponse.json(
-        { error: "Missing meetingId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing meetingId" }, { status: 400 });
     }
 
     const call = streamVideo.video.call("default", meetingId);
     await call.end();
+  }
+
+  // CALL ENDED
+  else if (eventType === "call.session_ended") {
+    const event = payload as CallEndedEvent;
+    const meetingId = event.call?.custom?.meetingId;
+
+    if (!meetingId) {
+      return NextResponse.json({ error: "Missing meetingId" }, { status: 400 });
+    }
+
+    await Meetings.updateOne(
+      { id: meetingId, status: "active" },
+      {
+        status: "processing",
+        endedAt: new Date(),
+      }
+    );
+  }
+
+  // TRANSCRIPTION READY
+  else if (eventType === "call.transcription_ready") {
+    const event = payload as CallTranscriptionReadyEvent;
+    const meetingId = event.call_cid.split(":")[1];
+
+    const updatedMeeting = await Meetings.findOneAndUpdate(
+      { id: meetingId },
+      { transcriptUrl: event.call_transcription.url },
+      { new: true }
+    );
+
+    if (!updatedMeeting) {
+      return NextResponse.json({ error: "Meeting not found" }, { status: 404 });
+    }
+
+    await inngest.send({
+      name: "meetings/processing",
+      data: {
+        meetingId: updatedMeeting.id,
+        transcriptUrl: updatedMeeting.transcriptUrl,
+      },
+    });
+  }
+
+  // RECORDING READY
+  else if (eventType === "call.recording_ready") {
+    const event = payload as CallRecordingReadyEvent;
+    const meetingId = event.call_cid.split(":")[1];
 
     await Meetings.updateOne(
       { id: meetingId },
       {
-        status: "completed",
-        endedAt: new Date(),
+        recordingUrl: event.call_recording.url,
       }
     );
   }
