@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
+import type { RealtimeClient } from "@stream-io/openai-realtime-api";
 import {
   MessageNewEvent,
   CallEndedEvent,
@@ -20,6 +21,13 @@ import { streamChat } from "@/lib/stream-chat";
 const openaiClient = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
+
+const activeRealtimeClients = new Map<string, RealtimeClient>();
+
+type WebhookPayload = {
+  type?: string;
+  [key: string]: unknown;
+};
 
 function verifySignatureWithSDK(body: string, signature: string): boolean {
   return streamVideo.verifyWebhook(body, signature);
@@ -42,9 +50,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  let payload: any;
+  let payload: WebhookPayload;
   try {
-    payload = JSON.parse(body);
+    payload = JSON.parse(body) as WebhookPayload;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -55,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   // CALL STARTED
   if (eventType === "call.session_started") {
-    const event = payload as CallSessionStartedEvent;
+    const event = payload as unknown as CallSessionStartedEvent;
     const meetingId = event.call?.custom?.meetingId;
 
     if (!meetingId) {
@@ -89,20 +97,41 @@ export async function POST(req: NextRequest) {
 
     const call = streamVideo.video.call("default", meetingId);
 
+    const existingRealtimeClient = activeRealtimeClients.get(meetingId);
+
+    if (existingRealtimeClient) {
+      try {
+        existingRealtimeClient.disconnect?.();
+      } catch {
+        // Ignore stale client cleanup failures.
+      }
+    }
+
     const realtimeClient = await streamVideo.video.connectOpenAi({
       call,
       openAiApiKey: process.env.OPENAI_API_KEY!,
       agentUserId: existingAgent.id,
+      model: "gpt-4o-realtime-preview-2025-06-03",
     });
 
     realtimeClient.updateSession({
       instructions: existingAgent.instructions,
+      modalities: ["text", "audio"],
+      voice: "alloy",
+      turn_detection: {
+        type: "server_vad",
+      },
+      input_audio_transcription: {
+        model: "whisper-1",
+      },
     });
+
+    activeRealtimeClients.set(meetingId, realtimeClient);
   }
 
   // PARTICIPANT LEFT
   else if (eventType === "call.session_participant_left") {
-    const event = payload as CallSessionParticipantLeftEvent;
+    const event = payload as unknown as CallSessionParticipantLeftEvent;
     const meetingId = event.call_cid.split(":")[1];
 
     if (!meetingId) {
@@ -115,7 +144,7 @@ export async function POST(req: NextRequest) {
 
   // CALL ENDED
   else if (eventType === "call.session_ended") {
-    const event = payload as CallEndedEvent;
+    const event = payload as unknown as CallEndedEvent;
     const meetingId = event.call?.custom?.meetingId;
 
     if (!meetingId) {
@@ -129,11 +158,20 @@ export async function POST(req: NextRequest) {
         endedAt: new Date(),
       }
     );
+
+    const realtimeClient = activeRealtimeClients.get(meetingId);
+    if (realtimeClient) {
+      try {
+        realtimeClient.disconnect?.();
+      } finally {
+        activeRealtimeClients.delete(meetingId);
+      }
+    }
   }
 
   // TRANSCRIPTION READY
   else if (eventType === "call.transcription_ready") {
-    const event = payload as CallTranscriptionReadyEvent;
+    const event = payload as unknown as CallTranscriptionReadyEvent;
     const meetingId = event.call_cid.split(":")[1];
 
     const updatedMeeting = await Meetings.findOneAndUpdate(
@@ -157,7 +195,7 @@ export async function POST(req: NextRequest) {
 
   // RECORDING READY
   else if (eventType === "call.recording_ready") {
-    const event = payload as CallRecordingReadyEvent;
+    const event = payload as unknown as CallRecordingReadyEvent;
     const meetingId = event.call_cid.split(":")[1];
 
     await Meetings.updateOne(
@@ -170,7 +208,7 @@ export async function POST(req: NextRequest) {
 
   // MESSAGE.NEW (AI CHAT)
   else if (eventType === "message.new") {
-    const event = payload as MessageNewEvent;
+    const event = payload as unknown as MessageNewEvent;
 
     const userId = event.user?.id;
     const channelId = event.channel_id;
