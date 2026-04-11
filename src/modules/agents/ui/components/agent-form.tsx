@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -35,6 +36,7 @@ export const AgentForm = ({
   initialValues,
 }: AgentFormProps) => {
   const trpc = useTRPC();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const createAgent = useMutation(
@@ -43,11 +45,18 @@ export const AgentForm = ({
         await queryClient.invalidateQueries(
           trpc.agents.getMany.queryOptions({}),
         );
-        //TODO: Invalidate Free Tier Usage
+        await queryClient.invalidateQueries(
+          trpc.premium.getFreeUsage.queryOptions(),
+        );
+
         onSuccess?.();
       },
       onError: (error) => {
         toast.error(error.message);
+
+        if (error.data?.code === "FORBIDDEN") {
+          router.push("/upgrade");
+        }
       },
     }),
   );

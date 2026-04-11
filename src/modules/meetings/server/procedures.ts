@@ -2,7 +2,7 @@ import { z } from "zod";
 import JSONL from "jsonl-parse-stringify";
 import { TRPCError } from "@trpc/server";
 
-import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
+import { createTRPCRouter, protectedProcedure, premiumProcedure } from "@/trpc/init";
 import { connectDB } from "@/db";
 import { Meetings, Agents, User } from "@/db/schema";
 
@@ -22,7 +22,7 @@ import { meetingsInsertSchema, meetingsUpdateSchema } from "../schemas";
 import { serialize } from "@/lib/serialize";
 
 export const meetingsRouter = createTRPCRouter({
-  // Chat token
+
   generateChatToken: protectedProcedure.mutation(async ({ ctx }) => {
     const token = streamChat.createToken(ctx.auth.user.id);
 
@@ -34,7 +34,6 @@ export const meetingsRouter = createTRPCRouter({
     return token;
   }),
 
-  // Transcript
   getTranscript: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -115,7 +114,6 @@ export const meetingsRouter = createTRPCRouter({
       });
     }),
 
-  // Video token (same)
   generateToken: protectedProcedure.mutation(async ({ ctx }) => {
     await streamVideo.upsertUsers([
       {
@@ -141,7 +139,6 @@ export const meetingsRouter = createTRPCRouter({
     });
   }),
 
-  // Remove
   remove: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -162,7 +159,6 @@ export const meetingsRouter = createTRPCRouter({
       return serialize(removedMeeting);
     }),
 
-  // Update
   update: protectedProcedure
     .input(meetingsUpdateSchema)
     .mutation(async ({ ctx, input }) => {
@@ -184,8 +180,7 @@ export const meetingsRouter = createTRPCRouter({
       return serialize(updatedMeeting);
     }),
 
-  // Create 
-  create: protectedProcedure
+  create: premiumProcedure("meetings")
     .input(meetingsInsertSchema)
     .mutation(async ({ input, ctx }) => {
       await connectDB();
@@ -244,7 +239,6 @@ export const meetingsRouter = createTRPCRouter({
       return serialize(createdMeeting);
     }),
 
-  // Get one
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -279,7 +273,6 @@ export const meetingsRouter = createTRPCRouter({
       });
     }),
 
-  // Get many
   getMany: protectedProcedure
     .input(
       z.object({
