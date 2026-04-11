@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MeetAI
+
+MeetAI is a full-stack AI meeting assistant built with Next.js. Users can create AI agents, schedule and join meetings, get automatic transcripts and recordings, and review AI-generated summaries after calls.
+
+## Features
+
+- Authentication with Better Auth (email/password + Google + GitHub)
+- Agent management (create, update, delete, search, paginate)
+- Meeting management (create, update, delete, search, filter by status)
+- Real-time video meetings powered by Stream Video
+- Meeting chat powered by Stream Chat
+- Call lifecycle handling via webhooks
+- Automatic transcript + recording capture
+- Async transcript processing with Inngest
+- AI-generated structured meeting summaries using OpenAI
+- Premium/free-tier usage limits with Polar billing integration
+
+## Tech Stack
+
+- Next.js 16 (App Router)
+- React 19 + TypeScript
+- tRPC + TanStack Query
+- MongoDB + Mongoose
+- Better Auth
+- Stream Video + Stream Chat
+- Inngest
+- OpenAI
+- Polar
+- Tailwind CSS 4 + shadcn/ui
+
+## Project Structure
+
+- `src/app`: Next.js routes, layouts, API route handlers
+- `src/modules`: feature-based modules (`agents`, `meetings`, `premium`, etc.)
+- `src/trpc`: tRPC initialization, routers, and client/server wiring
+- `src/db`: MongoDB client/connection and Mongoose schemas
+- `src/inngest`: background function definitions
+- `src/lib`: service clients (auth, stream, polar, utilities)
+
+## Environment Variables
+
+Create a `.env` file in the project root with values for:
+
+```bash
+# App
+NEXT_PUBLIC_APP_URL=
+
+# Database
+MONGODB_URI=
+
+# Better Auth / OAuth
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Stream Video
+NEXT_PUBLIC_STREAM_VIDEO_API_KEY=
+STREAM_VIDEO_SECRET_KEY=
+
+# Stream Chat
+NEXT_PUBLIC_STREAM_CHAT_API_KEY=
+STREAM_CHAT_SECRET_KEY=
+
+# OpenAI
+OPENAI_API_KEY=
+
+# Polar
+POLAR_ACCESS_TOKEN=
+```
 
 ## Getting Started
 
-First, run the development server:
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Add your `.env` values.
+
+3. Run the dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev`: start local dev server
+- `npm run build`: production build
+- `npm run start`: run production server
+- `npm run lint`: run ESLint
+- `npm run dev:webhook`: expose local server via ngrok URL (for webhook testing)
 
-## Learn More
+## Core Flow
 
-To learn more about Next.js, take a look at the following resources:
+1. User creates an AI agent and schedules a meeting.
+2. Stream call starts and webhook updates meeting state.
+3. Transcription/recording events are received and saved.
+4. Inngest job fetches transcript and enriches speaker metadata.
+5. OpenAI generates a structured summary.
+6. Meeting is marked completed and available in dashboard views.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Free-tier limits are enforced per user for meetings and agents.
+- Premium access is resolved from Polar subscription state.
