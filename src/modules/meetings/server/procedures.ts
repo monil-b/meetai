@@ -1,11 +1,14 @@
 import { z } from "zod";
+import JSONL from "jsonl-parse-stringify";
 import { TRPCError } from "@trpc/server";
+
 import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
 import { connectDB } from "@/db";
-import { Meetings, Agents } from "@/db/schema";
+import { Meetings, Agents, User } from "@/db/schema";
+
 import { generateAvatarUri } from "@/lib/avatar";
 import { streamVideo } from "@/lib/stream-video";
-import { serialize } from "@/lib/serialize";
+import { streamChat } from "@/lib/stream-chat";
 
 import {
   DEFAULT_PAGE,
@@ -14,10 +17,105 @@ import {
   MIN_PAGE_SIZE,
 } from "@/constants";
 
-import { MeetingStatus } from "../types";
+import { MeetingStatus, StreamTranscriptItem } from "../types";
 import { meetingsInsertSchema, meetingsUpdateSchema } from "../schemas";
+import { serialize } from "@/lib/serialize";
 
 export const meetingsRouter = createTRPCRouter({
+  // Chat token
+  generateChatToken: protectedProcedure.mutation(async ({ ctx }) => {
+    const token = streamChat.createToken(ctx.auth.user.id);
+
+    await streamChat.upsertUser({
+      id: ctx.auth.user.id,
+      role: "admin",
+    });
+
+    return token;
+  }),
+
+  // Transcript
+  getTranscript: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input, ctx }) => {
+      await connectDB();
+
+      const existingMeeting = await Meetings.findOne({
+        id: input.id,
+        userId: ctx.auth.user.id,
+      });
+
+      if (!existingMeeting) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Meeting not found",
+        });
+      }
+
+      if (!existingMeeting.transcriptUrl) return [];
+
+      const transcript = await fetch(existingMeeting.transcriptUrl)
+        .then((res) => res.text())
+        .then((text) => JSONL.parse<StreamTranscriptItem>(text))
+        .catch(() => []);
+
+      const speakerIds = [
+        ...new Set(transcript.map((item) => item.speaker_id)),
+      ];
+
+      const userSpeakers = await User.find({
+        id: { $in: speakerIds },
+      });
+
+      const agentSpeakers = await Agents.find({
+        id: { $in: speakerIds },
+      });
+
+      const speakers = [
+        ...userSpeakers.map((u) => ({
+          ...u.toObject(),
+          image:
+            u.image ??
+            generateAvatarUri({ seed: u.name, variant: "initials" }),
+        })),
+        ...agentSpeakers.map((a) => ({
+          ...a.toObject(),
+          image: generateAvatarUri({
+            seed: a.name,
+            variant: "botttsNeutral",
+          }),
+        })),
+      ];
+
+      return transcript.map((item) => {
+        const speaker = speakers.find(
+          (s) => s.id === item.speaker_id
+        );
+
+        if (!speaker) {
+          return {
+            ...item,
+            user: {
+              name: "Unknown",
+              image: generateAvatarUri({
+                seed: "Unknown",
+                variant: "initials",
+              }),
+            },
+          };
+        }
+
+        return {
+          ...item,
+          user: {
+            name: speaker.name,
+            image: speaker.image,
+          },
+        };
+      });
+    }),
+
+  // Video token (same)
   generateToken: protectedProcedure.mutation(async ({ ctx }) => {
     await streamVideo.upsertUsers([
       {
@@ -26,22 +124,24 @@ export const meetingsRouter = createTRPCRouter({
         role: "admin",
         image:
           ctx.auth.user.image ??
-          generateAvatarUri({ seed: ctx.auth.user.name, variant: "initials" }),
+          generateAvatarUri({
+            seed: ctx.auth.user.name,
+            variant: "initials",
+          }),
       },
     ]);
 
-    const expirationTime = Math.floor(Date.now() / 1000) + 3600;
+    const exp = Math.floor(Date.now() / 1000) + 3600;
     const issuedAt = Math.floor(Date.now() / 1000) - 60;
 
-    const token = streamVideo.generateUserToken({
+    return streamVideo.generateUserToken({
       user_id: ctx.auth.user.id,
-      exp: expirationTime,
+      exp,
       validity_in_seconds: issuedAt,
     });
-
-    return token;
   }),
 
+  // Remove
   remove: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -53,12 +153,16 @@ export const meetingsRouter = createTRPCRouter({
       });
 
       if (!removedMeeting) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Meeting not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Meeting not found",
+        });
       }
 
       return serialize(removedMeeting);
     }),
 
+  // Update
   update: protectedProcedure
     .input(meetingsUpdateSchema)
     .mutation(async ({ ctx, input }) => {
@@ -71,12 +175,16 @@ export const meetingsRouter = createTRPCRouter({
       );
 
       if (!updatedMeeting) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Meeting not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Meeting not found",
+        });
       }
 
       return serialize(updatedMeeting);
     }),
 
+  // Create 
   create: protectedProcedure
     .input(meetingsInsertSchema)
     .mutation(async ({ input, ctx }) => {
@@ -110,10 +218,15 @@ export const meetingsRouter = createTRPCRouter({
         },
       });
 
-      const agent = await Agents.findOne({ id: createdMeeting.agentId });
+      const agent = await Agents.findOne({
+        id: createdMeeting.agentId,
+      });
 
       if (!agent) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Agent not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agent not found",
+        });
       }
 
       await streamVideo.upsertUsers([
@@ -131,6 +244,7 @@ export const meetingsRouter = createTRPCRouter({
       return serialize(createdMeeting);
     }),
 
+  // Get one
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -142,7 +256,10 @@ export const meetingsRouter = createTRPCRouter({
       });
 
       if (!meeting) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Meeting not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Meeting not found",
+        });
       }
 
       const agent = await Agents.findOne({ id: meeting.agentId });
@@ -162,6 +279,7 @@ export const meetingsRouter = createTRPCRouter({
       });
     }),
 
+  // Get many
   getMany: protectedProcedure
     .input(
       z.object({
@@ -169,15 +287,13 @@ export const meetingsRouter = createTRPCRouter({
         pageSize: z.number().min(MIN_PAGE_SIZE).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
         search: z.string().nullish(),
         agentId: z.string().nullish(),
-        status: z
-          .enum([
-            MeetingStatus.Upcoming,
-            MeetingStatus.Active,
-            MeetingStatus.Completed,
-            MeetingStatus.Processing,
-            MeetingStatus.Cancelled,
-          ])
-          .nullish(),
+        status: z.enum([
+          MeetingStatus.Upcoming,
+          MeetingStatus.Active,
+          MeetingStatus.Completed,
+          MeetingStatus.Processing,
+          MeetingStatus.Cancelled,
+        ]).nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
