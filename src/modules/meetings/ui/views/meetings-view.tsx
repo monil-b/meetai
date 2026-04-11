@@ -10,6 +10,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { columns } from "../components/columns";
 import { useMeetingsFilters } from "../../hooks/use-meetings-filters";
 import { DataPagination } from "@/components/data-pagination";
+import { MeetingGetMany } from "../../types";
 
 export const MeetingsView = () => {
   const trpc = useTRPC();
@@ -21,19 +22,25 @@ export const MeetingsView = () => {
       ...filters,
     }),
   );
+
+  const meetingsData =
+    (data as { items?: MeetingGetMany; totalPages?: number } | undefined) ?? {};
+  const items = meetingsData.items ?? [];
+  const totalPages = meetingsData.totalPages ?? 0;
+
   return (
     <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
       <DataTable
-        data={data.items}
+        data={items}
         columns={columns}
         onRowClick={(row) => router.push(`/meetings/${row.id}`)}
       />
       <DataPagination
         page={filters.page}
-        totalPages={data.totalPages}
+        totalPages={totalPages}
         onPageChange={(page) => setFilters({ page })}
       />
-      {data.items.length === 0 && (
+      {items.length === 0 && (
         <EmptyState
           title="Create your first Meeting"
           description="Schedule a meeting to connect with others. Each meeting lets you collaborate, share ideas, and interact with participants in real time."

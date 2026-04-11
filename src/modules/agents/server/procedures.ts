@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure, premiumProcedure } from "@/trpc/init";
 import { connectDB } from "@/db";
-import { Agents } from "@/db/schema";
+import { Agents, Meetings } from "@/db/schema";
 import { serialize } from "@/lib/serialize";
 
 import {
@@ -76,9 +76,13 @@ export const agentsRouter = createTRPCRouter({
         });
       }
 
+      const meetingCount = await Meetings.countDocuments({
+        agentId: existingAgent.id,
+      });
+
       return serialize({
-        meetingCount: 5,
         ...existingAgent.toObject(),
+        meetingCount,
       });
     }),
 
@@ -107,19 +111,29 @@ export const agentsRouter = createTRPCRouter({
         query.name = { $regex: search, $options: "i" };
       }
 
-      const data = await Agents.find(query)
-        .sort({ createdAt: -1, id: -1 }) 
+      const agentsData = await Agents.find(query)
+        .sort({ createdAt: -1, id: -1 }) // desc
         .skip((page - 1) * pageSize)
         .limit(pageSize);
 
       const total = await Agents.countDocuments(query);
       const totalPages = Math.ceil(total / pageSize);
 
+      const items = await Promise.all(
+        agentsData.map(async (agent) => {
+          const meetingCount = await Meetings.countDocuments({
+            agentId: agent.id,
+          });
+
+          return {
+            ...agent.toObject(),
+            meetingCount,
+          };
+        })
+      );
+
       return serialize({
-        items: data.map((item) => ({
-          meetingCount: 6, 
-          ...item.toObject(),
-        })),
+        items,
         total,
         totalPages,
       });
