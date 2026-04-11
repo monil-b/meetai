@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "@/trpc/init";
+import { createTRPCRouter, protectedProcedure, premiumProcedure } from "@/trpc/init";
 import { connectDB } from "@/db";
 import { Agents } from "@/db/schema";
 import { serialize } from "@/lib/serialize";
@@ -108,7 +108,7 @@ export const agentsRouter = createTRPCRouter({
       }
 
       const data = await Agents.find(query)
-        .sort({ createdAt: -1, id: -1 })
+        .sort({ createdAt: -1, id: -1 }) 
         .skip((page - 1) * pageSize)
         .limit(pageSize);
 
@@ -117,7 +117,7 @@ export const agentsRouter = createTRPCRouter({
 
       return serialize({
         items: data.map((item) => ({
-          meetingCount: 6,
+          meetingCount: 6, 
           ...item.toObject(),
         })),
         total,
@@ -125,7 +125,7 @@ export const agentsRouter = createTRPCRouter({
       });
     }),
 
-  create: protectedProcedure
+  create: premiumProcedure("agents")
     .input(agentsInsertSchema)
     .mutation(async ({ input, ctx }) => {
       await connectDB();

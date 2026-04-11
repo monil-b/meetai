@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -36,9 +37,10 @@ interface MeetingFormProps {
 export const MeetingForm = ({
   onSuccess,
   onCancel,
-  initialValues, 
+  initialValues,
 }: MeetingFormProps) => {
   const trpc = useTRPC();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const [openNewAgentDialog, setOpenNewAgentDialog] = useState(false);
@@ -51,17 +53,27 @@ export const MeetingForm = ({
     }),
   );
 
+  const agentItems =
+    (agents.data as { items: Array<{ id: string; name: string }> } | undefined)
+      ?.items ?? [];
+
   const createMeeting = useMutation(
     trpc.meetings.create.mutationOptions({
       onSuccess: async (data) => {
         await queryClient.invalidateQueries(
           trpc.meetings.getMany.queryOptions({}),
         );
-        //TODO: Invalidate Free Tier Usage
+        await queryClient.invalidateQueries(
+          trpc.premium.getFreeUsage.queryOptions(),
+        );
         onSuccess?.(data.id);
       },
       onError: (error) => {
         toast.error(error.message);
+
+        if (error.data?.code === "FORBIDDEN") {
+          router.push("/upgrade");
+        }
       },
     }),
   );
@@ -133,7 +145,7 @@ export const MeetingForm = ({
                 <FormLabel>Agent</FormLabel>
                 <FormControl>
                   <CommandSelect
-                    options={(agents.data?.items ?? []).map((agent) => ({
+                    options={agentItems.map((agent) => ({
                       id: agent.id,
                       value: agent.id,
                       children: (

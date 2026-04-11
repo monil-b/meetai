@@ -1,9 +1,24 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { polar, checkout, portal } from "@polar-sh/better-auth";
+
 import { client } from "@/db/client";
+import { polarClient } from "./polar";
 
 export const auth = betterAuth({
-  database: mongodbAdapter(client.db("meetai")),
+  plugins: [
+    polar({
+      client: polarClient,
+      createCustomerOnSignUp: true,
+      use: [
+        checkout({
+          authenticatedUsersOnly: true,
+          successUrl: "/upgrade",
+        }),
+        portal(),
+      ],
+    }),
+  ],
 
   socialProviders: {
     github: {
@@ -19,4 +34,6 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  
+  database: mongodbAdapter(client.db("meetai")),
 });
