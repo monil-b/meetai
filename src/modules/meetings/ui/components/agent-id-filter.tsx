@@ -6,6 +6,7 @@ import { CommandSelect } from "@/components/comand-select";
 import { GeneratedAvatar } from "@/components/generated-avatar";
 
 import { useMeetingsFilters } from "../../hooks/use-meetings-filters";
+import { AgentsGetMany } from "@/modules/agents/types";
 
 export const AgentIdFilter = () => {
   const [filters, setFilters] = useMeetingsFilters();
@@ -20,11 +21,14 @@ export const AgentIdFilter = () => {
     }),
   );
 
+  const agentItems: AgentsGetMany =
+    (data as { items?: AgentsGetMany } | undefined)?.items ?? [];
+
   return (
     <CommandSelect
       className="h-9"
       placeholder="Agent"
-      options={(data?.items ?? []).map((agent) => ({
+      options={agentItems.map((agent: AgentsGetMany[number]) => ({
         id: agent.id,
         value: agent.id,
         children: (

@@ -19,7 +19,7 @@
     "@inworld/nodejs-sdk": "^1.17.0",
     "@opentelemetry/api": "^1.9.0",
     "@polar-sh/better-auth": "^1.8.3",
-    "@polar-sh/sdk": "^0.47.0",
+    "@polar-sh/sdk": "^0.46.7",
     "@stream-io/node-sdk": "^0.7.51",
     "@stream-io/openai-realtime-api": "^0.3.3",
     "@stream-io/video-react-sdk": "^1.34.2",

@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/empty-state";
 import { DataPagination } from "@/components/data-pagination";
 import { useAgentsFilters } from "../../hooks/use-agents-filters";
 import { useRouter } from "next/navigation";
+import { AgentsGetMany } from "../../types";
 
 export const AgentsView = () => {
   const [filters, setFilters] = useAgentsFilters();
@@ -22,19 +23,24 @@ export const AgentsView = () => {
     }),
   );
 
+  const agentsData =
+    (data as { items?: AgentsGetMany; totalPages?: number } | undefined) ?? {};
+  const items = agentsData.items ?? [];
+  const totalPages = agentsData.totalPages ?? 0;
+
   return (
     <div className="flex-1 pb-4 px-4 md:px-8 flex flex-col gap-y-4">
       <DataTable
-        data={data.items}
+        data={items}
         columns={columns}
         onRowClick={(row) => router.push(`/agents/${row.id}`)}
       />
       <DataPagination
         page={filters.page}
-        totalPages={data.totalPages}
+        totalPages={totalPages}
         onPageChange={(page) => setFilters({ page })}
       />
-      {data.items.length === 0 && (
+      {items.length === 0 && (
         <EmptyState
           title="Create your first agent"
           description="Create an agent to join your meetings. Each agent will follow your instructions can interact with participants during the call."
