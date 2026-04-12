@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { BotIcon, StarIcon, VideoIcon } from "lucide-react";
+import { BotIcon, HouseIcon, StarIcon, VideoIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +23,11 @@ import { DashboardUserButton } from "./dashboard-user-button";
 import { DashboardTrial } from "./dashboard-trial";
 
 const firstSection = [
+  {
+    icon: HouseIcon,
+    label: "Home",
+    href: "/",
+  },
   {
     icon: VideoIcon,
     label: "Meetings",
