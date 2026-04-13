@@ -17,7 +17,8 @@ import "@stream-io/video-react-sdk/dist/css/styles.css";
 
 interface Props {
   onJoin: () => void;
-};
+  isJoining?: boolean;
+}
 
 const DisabledVideoPreview = () => {
   const { data } = authClient.useSession();
@@ -27,7 +28,7 @@ const DisabledVideoPreview = () => {
       participant={
         {
           name: data?.user.name ?? "",
-          image: 
+          image:
             data?.user.image ??
             generateAvatarUri({
               seed: data?.user.name ?? "",
@@ -36,8 +37,8 @@ const DisabledVideoPreview = () => {
         } as StreamVideoParticipant
       }
     />
-  )
-}
+  );
+};
 
 const AllowBrowserPermissions = () => {
   return (
@@ -48,7 +49,7 @@ const AllowBrowserPermissions = () => {
   );
 };
 
-export const CallLobby = ({ onJoin }: Props) => {
+export const CallLobby = ({ onJoin, isJoining = false }: Props) => {
   const { useCameraState, useMicrophoneState } = useCallStateHooks();
 
   const { hasBrowserPermission: hasMicPermission } = useMicrophoneState();
@@ -68,7 +69,7 @@ export const CallLobby = ({ onJoin }: Props) => {
             DisabledVideoPreview={
               hasBrowserMediaPermission
                 ? DisabledVideoPreview
-                : AllowBrowserPermissions 
+                : AllowBrowserPermissions
             }
           />
           <div className="flex gap-x-2">
@@ -77,19 +78,15 @@ export const CallLobby = ({ onJoin }: Props) => {
           </div>
           <div className="flex gap-x-2 justify-between w-full">
             <Button asChild variant="ghost">
-              <Link href="/meetings">
-                Cancel
-              </Link>
+              <Link href="/meetings">Cancel</Link>
             </Button>
-            <Button
-              onClick={onJoin}
-            >
+            <Button onClick={onJoin} disabled={isJoining}>
               <LogInIcon />
-              Join Call
+              {isJoining ? "Joining..." : "Join Call"}
             </Button>
           </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
